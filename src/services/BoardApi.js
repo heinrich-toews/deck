@@ -4,7 +4,7 @@
  */
 
 import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
+import { generateOcsUrl, generateUrl } from '@nextcloud/router'
 import '../models/index.js'
 
 /**
@@ -15,6 +15,11 @@ export class BoardApi {
 	url(url) {
 		url = `/apps/deck${url}`
 		return generateUrl(url)
+	}
+
+	ocsUrl(url) {
+		url = `/apps/deck/api/v1.0${url}`
+		return generateOcsUrl(url)
 	}
 
 	/**
@@ -353,6 +358,68 @@ export class BoardApi {
 			.then(
 				(response) => {
 					return Promise.resolve(response.data)
+				},
+				(err) => {
+					return Promise.reject(err)
+				},
+			)
+			.catch((err) => {
+				return Promise.reject(err)
+			})
+	}
+
+	// Board view API calls
+
+	loadBoardViews(boardId) {
+		return axios.get(this.ocsUrl(`/boards/${boardId}/views`))
+			.then(
+				(response) => {
+					return Promise.resolve(response.data.ocs.data)
+				},
+				(err) => {
+					return Promise.reject(err)
+				},
+			)
+			.catch((err) => {
+				return Promise.reject(err)
+			})
+	}
+
+	loadAllBoardViews() {
+		return axios.get(this.ocsUrl('/views'))
+			.then(
+				(response) => {
+					return Promise.resolve(response.data.ocs.data)
+				},
+				(err) => {
+					return Promise.reject(err)
+				},
+			)
+			.catch((err) => {
+				return Promise.reject(err)
+			})
+	}
+
+	createBoardView(boardId, name, filters) {
+		return axios.post(this.ocsUrl(`/boards/${boardId}/views`), { name, filters })
+			.then(
+				(response) => {
+					return Promise.resolve(response.data.ocs.data)
+				},
+				(err) => {
+					return Promise.reject(err)
+				},
+			)
+			.catch((err) => {
+				return Promise.reject(err)
+			})
+	}
+
+	deleteBoardView(boardId, viewId) {
+		return axios.delete(this.ocsUrl(`/boards/${boardId}/views/${viewId}`))
+			.then(
+				(response) => {
+					return Promise.resolve(response.data.ocs.data)
 				},
 				(err) => {
 					return Promise.reject(err)

@@ -60,6 +60,8 @@ export default function storeFactory() {
 			activity: [],
 			activityLoadMore: true,
 			filter: { tags: [], users: [], due: '', unassigned: false, completed: 'both' },
+			boardViews: [],
+			allBoardViews: [],
 			shortcutLock: false,
 		},
 		getters: {
@@ -158,6 +160,12 @@ export default function storeFactory() {
 			},
 			SET_FILTER(state, filter) {
 				Object.assign(state.filter, filter)
+			},
+			SET_BOARD_VIEWS(state, views) {
+				state.boardViews = views
+			},
+			SET_ALL_BOARD_VIEWS(state, views) {
+				state.allBoardViews = views
 			},
 			TOGGLE_FILTER(state, filter) {
 				Object.keys(filter).forEach((key) => {
@@ -330,6 +338,22 @@ export default function storeFactory() {
 			},
 			toggleFilter({ commit }, filter) {
 				commit('TOGGLE_FILTER', filter)
+			},
+			async loadBoardViews({ commit }, boardId) {
+				commit('SET_BOARD_VIEWS', await apiClient.loadBoardViews(boardId))
+			},
+			async loadAllBoardViews({ commit }) {
+				commit('SET_ALL_BOARD_VIEWS', await apiClient.loadAllBoardViews())
+			},
+			async createBoardView({ commit, state, dispatch }, { boardId, name }) {
+				await apiClient.createBoardView(boardId, name, state.filter)
+				await dispatch('loadBoardViews', boardId)
+				await dispatch('loadAllBoardViews')
+			},
+			async deleteBoardView({ dispatch }, { boardId, viewId }) {
+				await apiClient.deleteBoardView(boardId, viewId)
+				await dispatch('loadBoardViews', boardId)
+				await dispatch('loadAllBoardViews')
 			},
 			async loadBoardById({ commit, dispatch }, boardId) {
 				const filterReset = { tags: [], users: [], due: '', unassigned: false, completed: 'both' }

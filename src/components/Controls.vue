@@ -93,6 +93,41 @@
 						</template>
 
 						<div v-if="filterVisible" class="filter">
+							<div v-if="displayViews.length" class="filter--saved-views">
+								<h3>{{ t('deck', 'Saved views') }}</h3>
+								<div v-for="view in displayViews" :key="view.id" class="filter--saved-view">
+									<NcButton type="tertiary"
+										class="filter--saved-view-name"
+										:title="view.isDefault
+											? t('deck', 'Apply default view {name}', { name: view.name })
+											: t('deck', 'Apply view {name}', { name: view.name })"
+										@click="view.isDefault ? applyDefaultView() : applyView(view)">
+										<template #icon>
+											<StarIcon v-if="view.isDefault" :size="18" decorative />
+											<BookmarkOutline v-else :size="18" decorative />
+										</template>
+										{{ view.name }}
+									</NcButton>
+									<NcButton v-if="view.isDefault"
+										type="tertiary"
+										:aria-label="t('deck', 'Remove default view')"
+										:title="t('deck', 'Remove default view')"
+										@click="removeDefaultView">
+										<template #icon>
+											<BookmarkOffOutline :size="18" decorative />
+										</template>
+									</NcButton>
+									<NcButton v-if="!view.isDefault || view.isLocal"
+										type="tertiary"
+										:aria-label="t('deck', 'Delete view {name}', { name: view.name })"
+										@click="removeView(view)">
+										<template #icon>
+											<TrashCanOutline :size="18" decorative />
+										</template>
+									</NcButton>
+								</div>
+							</div>
+
 							<h3>{{ t('deck', 'Filter by tag') }}</h3>
 							<div v-for="label in labelsSorted" :key="label.id" class="filter--item">
 								<input :id="label.id"
@@ -217,6 +252,22 @@
 								<label for="noDue">{{ t('deck', 'No due date') }}</label>
 							</div>
 
+							<div class="filter--save-view">
+								<input v-model="newViewName"
+									class="filter--save-view-input"
+									type="text"
+									:placeholder="t('deck', 'View name')"
+									@keyup.enter="saveView">
+								<NcButton :disabled="!isFilterActive || newViewName.trim() === ''"
+									:wide="true"
+									@click="saveView">
+									<template #icon>
+										<ContentSave :size="20" decorative />
+									</template>
+									{{ t('deck', 'Save view') }}
+								</NcButton>
+							</div>
+
 							<NcButton :disabled="!isFilterActive" :wide="true" @click="clearFilter">
 								{{ t('deck', 'Clear filter') }}
 							</NcButton>
@@ -270,6 +321,11 @@ import ArchiveIcon from 'vue-material-design-icons/ArchiveOutline.vue'
 import ImageIcon from 'vue-material-design-icons/ImageMultipleOutline.vue'
 import FilterIcon from 'vue-material-design-icons/FilterOutline.vue'
 import FilterOffIcon from 'vue-material-design-icons/FilterOffOutline.vue'
+import BookmarkOutline from 'vue-material-design-icons/BookmarkOutline.vue'
+import BookmarkOffOutline from 'vue-material-design-icons/BookmarkOffOutline.vue'
+import ContentSave from 'vue-material-design-icons/ContentSave.vue'
+import StarIcon from 'vue-material-design-icons/Star.vue'
+import TrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
 import TableColumnPlusAfter from 'vue-material-design-icons/TableColumnPlusAfter.vue'
 import ArrowCollapseVerticalIcon from 'vue-material-design-icons/ArrowCollapseVertical.vue'
 import ArrowExpandVerticalIcon from 'vue-material-design-icons/ArrowExpandVertical.vue'
@@ -292,6 +348,11 @@ export default {
 		ImageIcon,
 		FilterIcon,
 		FilterOffIcon,
+		BookmarkOutline,
+		BookmarkOffOutline,
+		ContentSave,
+		StarIcon,
+		TrashCanOutline,
 		ArrowCollapseVerticalIcon,
 		ArrowExpandVerticalIcon,
 		TableColumnPlusAfter,
@@ -317,6 +378,7 @@ export default {
 			filterVisible: false,
 			isAddStackVisible: false,
 			filter: { tags: [], users: [], due: '', unassigned: false, completed: 'both' },
+			newViewName: '',
 			showAddCardModal: false,
 			defaultPageTitle: false,
 			isNotifyPushEnabled: isNotifyPushEnabled(),
@@ -334,6 +396,8 @@ export default {
 			showCardCover: state => state.showCardCover,
 			searchQuery: state => state.searchQuery,
 			showArchived: state => state.showArchived,
+			boardViews: state => state.boardViews,
+			allBoardViews: state => state.allBoardViews,
 		}),
 		detailsRoute() {
 			return {
@@ -346,6 +410,19 @@ export default {
 		labelsSorted() {
 			return [...this.board.labels].sort((a, b) => (a.title < b.title) ? -1 : 1)
 		},
+		displayViews() {
+			const defaultId = this.$store.getters.config('defaultBoardView')
+			const defaultView = defaultId ? this.allBoardViews.find((view) => view.id === defaultId) : null
+			const isLocalDefault = defaultView && this.boardViews.some((view) => view.id === defaultView.id)
+			const localViews = this.boardViews.filter((view) => !defaultView || view.id !== defaultView.id)
+			if (!defaultView) {
+				return localViews.map((view) => ({ ...view, isDefault: false, isLocal: true }))
+			}
+			return [
+				{ ...defaultView, isDefault: true, isLocal: isLocalDefault },
+				...localViews.map((view) => ({ ...view, isDefault: false, isLocal: true })),
+			]
+		},
 		presentUsers() {
 			if (!this.board) return []
 			// get user object including displayname from the list of all users with acces
@@ -356,6 +433,11 @@ export default {
 		board(current, previous) {
 			if (current?.id !== previous?.id) {
 				this.clearFilter()
+				this.newViewName = ''
+				if (current?.id) {
+					this.$store.dispatch('loadBoardViews', current.id)
+					this.$store.dispatch('loadAllBoardViews').then(() => this.applyDefaultView())
+				}
 			}
 			if (current) {
 				this.setPageTitle(current.title)
@@ -433,6 +515,57 @@ export default {
 			const filterReset = { tags: [], users: [], due: '', unassigned: false, completed: 'both' }
 			this.$store.dispatch('setFilter', { ...filterReset })
 			this.filter = filterReset
+		},
+		applyView(view) {
+			const filters = view.filters || {}
+			this.filter = {
+				tags: [...(filters.tags || [])],
+				users: [...(filters.users || [])],
+				due: filters.due || '',
+				unassigned: filters.unassigned || false,
+				completed: filters.completed || 'both',
+			}
+			this.$store.dispatch('setFilter', { ...this.filter })
+		},
+		applyDefaultView() {
+			if (!this.board) {
+				return
+			}
+			const viewId = this.$store.getters.config('defaultBoardView')
+			if (!viewId) {
+				return
+			}
+			const view = this.allBoardViews.find((v) => v.id === viewId)
+			if (!view) {
+				return
+			}
+			const filters = view.filters || {}
+			const boardLabelIds = this.board.labels?.map((label) => label.id) || []
+			const matchingTags = (filters.tags || []).filter((tag) => boardLabelIds.includes(tag))
+			this.filter = {
+				tags: matchingTags,
+				users: [...(filters.users || [])],
+				due: filters.due || '',
+				unassigned: filters.unassigned || false,
+				completed: filters.completed || 'both',
+			}
+			this.$store.dispatch('setFilter', { ...this.filter })
+		},
+		removeDefaultView() {
+			this.$store.dispatch('setConfig', { defaultBoardView: null })
+		},
+		async removeView(view) {
+			await this.$store.dispatch('deleteBoardView', { boardId: view.boardId, viewId: view.id })
+			if (this.$store.getters.config('defaultBoardView') === view.id) {
+				this.$store.dispatch('setConfig', { defaultBoardView: null })
+			}
+		},
+		async saveView() {
+			if (!this.isFilterActive || this.newViewName.trim() === '' || !this.board) {
+				return
+			}
+			await this.$store.dispatch('createBoardView', { boardId: this.board.id, name: this.newViewName.trim() })
+			this.newViewName = ''
 		},
 		clickShowAddCardModel() {
 			this.showAddCardModal = true
@@ -584,6 +717,35 @@ export default {
 	.filter h3 {
 		margin-top: 0px;
 		margin-bottom: 5px;
+	}
+
+	.filter--saved-views {
+		border-bottom: 1px solid var(--color-border);
+		margin-bottom: 8px;
+		padding-bottom: 4px;
+
+		.filter--saved-view {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+
+			.filter--saved-view-name {
+				flex-grow: 1;
+				justify-content: flex-start;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+		}
+	}
+
+	.filter--save-view {
+		margin-top: 8px;
+
+		.filter--save-view-input {
+			width: 100%;
+			margin-bottom: 8px;
+		}
 	}
 
 	.filter-button {

@@ -13,6 +13,18 @@
 				<NcFormBoxSwitch v-model="cardDetailsInModal"
 					:label="t('deck', 'Use bigger card view')" />
 			</NcFormBox>
+			<NcFormBox>
+				<NcSelect v-model="defaultBoardView"
+					open-direction="bottom"
+					:options="boardViewOptions"
+					:input-label="t('deck', 'Default view for all boards')"
+					label="label"
+					track-by="id"
+					clearable />
+				<p class="settings-hint">
+					{{ t('deck', 'The selected view is applied automatically when you open any board.') }}
+				</p>
+			</NcFormBox>
 		</NcAppSettingsSection>
 
 		<NcAppSettingsSection id="appearance-settings" :name="t('deck', 'Appearance')">
@@ -129,9 +141,33 @@ export default {
 				this.$store.dispatch('setConfig', { calendar: newValue })
 			},
 		},
+		boardViewOptions() {
+			const boards = this.$store.state.boards || []
+			return (this.$store.state.allBoardViews || []).map((view) => {
+				const board = boards.find((b) => b.id === view.boardId)
+				const boardTitle = board?.title || `#${view.boardId}`
+				return {
+					id: view.id,
+					label: `${view.name} (${boardTitle})`,
+				}
+			})
+		},
+		defaultBoardView: {
+			get() {
+				const id = this.$store.getters.config('defaultBoardView')
+				if (!id) {
+					return null
+				}
+				return this.boardViewOptions.find((view) => view.id === id) || null
+			},
+			set(view) {
+				this.$store.dispatch('setConfig', { defaultBoardView: view ? view.id : null })
+			},
+		},
 	},
 
 	beforeMount() {
+		this.$store.dispatch('loadAllBoardViews')
 		if (this.isAdmin) {
 			this.groupLimit = this.$store.getters.config('groupLimit')
 			axios.get(generateOcsUrl('cloud/groups')).then((response) => {
@@ -182,6 +218,12 @@ export default {
 .app-settings-section {
 	&#settings-section_admin-settings p {
 		margin-bottom: 20px;
+	}
+
+	.settings-hint {
+		margin: 0;
+		padding-left: calc(var(--default-clickable-area) * 0.5);
+		color: var(--color-text-maxcontrast);
 	}
 }
 </style>

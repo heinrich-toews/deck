@@ -136,6 +136,12 @@ return [
 		['name' => 'Config#get', 'url' => '/api/v{apiVersion}/config', 'verb' => 'GET'],
 		['name' => 'Config#setValue', 'url' => '/api/v{apiVersion}/config/{key}', 'verb' => 'POST'],
 
+		['name' => 'board_view_api#all', 'url' => '/api/v{apiVersion}/views', 'verb' => 'GET'],
+		['name' => 'board_view_api#index', 'url' => '/api/v{apiVersion}/boards/{boardId}/views', 'verb' => 'GET'],
+		['name' => 'board_view_api#create', 'url' => '/api/v{apiVersion}/boards/{boardId}/views', 'verb' => 'POST'],
+		['name' => 'board_view_api#update', 'url' => '/api/v{apiVersion}/boards/{boardId}/views/{viewId}', 'verb' => 'PUT'],
+		['name' => 'board_view_api#delete', 'url' => '/api/v{apiVersion}/boards/{boardId}/views/{viewId}', 'verb' => 'DELETE'],
+
 		['name' => 'comments_api#list', 'url' => '/api/v{apiVersion}/cards/{cardId}/comments', 'verb' => 'GET'],
 		['name' => 'comments_api#create', 'url' => '/api/v{apiVersion}/cards/{cardId}/comments', 'verb' => 'POST'],
 		['name' => 'comments_api#update', 'url' => '/api/v{apiVersion}/cards/{cardId}/comments/{commentId}', 'verb' => 'PUT'],

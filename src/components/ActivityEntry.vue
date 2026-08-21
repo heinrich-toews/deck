@@ -13,6 +13,7 @@
 			</div>
 		</div>
 		<!-- FIXME ins/del tags do no longer work with activity so we should get rid of that -->
+		<!-- eslint-disable-next-line vue/no-v-html -->
 		<p v-if="activity.message" class="activity--message" v-html="sanitizedMessage" />
 	</div>
 </template>

@@ -36,11 +36,13 @@
 			<div ref="editor" />
 		</div>
 		<template v-else>
+			<!-- eslint-disable vue/no-v-html -->
 			<div v-if="!descriptionEditing && hasDescription"
 				id="description-preview"
 				dir="auto"
 				@click="clickedPreview"
 				v-html="renderedDescription" />
+			<!-- eslint-enable vue/no-v-html -->
 			<p v-else-if="!descriptionEditing" class="placeholder" @click="showEditor()">
 				{{ t('deck', 'Write a description …') }}
 			</p>

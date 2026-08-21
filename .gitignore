@@ -8,5 +8,6 @@ tests/integration/vendor/
 tests/.phpunit.result.cache
 vendor/
 .php_cs.cache
+.php-cs-fixer.cache
 \.idea/
 settings.json
